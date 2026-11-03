@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RouteWise — Bengaluru Smart Urban Mobility</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <header class="navbar">
+        <div class="nav-container">
+            <div class="brand">
+                <span class="brand-icon">⚡</span>
+                <span class="brand-name">Route<span>Wise</span></span>
+                <span class="badge-city">Bengaluru</span>
+            </div>
+            <nav class="nav-links">
+                <a href="#planner" class="active">Route Planner</a>
+                <a href="#metro-explorer">Metro Explorer</a>
+                <a href="#analytics-section">Fare History & Trends</a>
+                <a href="#savings-section">Commute Savings</a>
+            </nav>
+            <div class="auth-box" id="authBox">
+                <button class="btn btn-outline" id="loginBtn" onclick="openAuthModal('login')">Sign In</button>
+                <button class="btn btn-primary" id="registerBtn" onclick="openAuthModal('register')">Register</button>
+                <div class="user-pill hidden" id="userPill">
+                    <span id="userName">User</span>
+                    <button class="btn-text" onclick="handleLogout()">Sign Out</button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-container">
+        <!-- Hero & Planner Section -->
+        <section id="planner" class="planner-grid">
+            <!-- Left Panel: Input & Controls -->
+            <div class="planner-card">
+                <h2>Plan Your Smart Journey</h2>
+                <p class="subtitle">Compare Uber, Ola, Rapido, Namma Yatri & Namma Metro multimodal routes</p>
+
+                <form id="journeyForm" onsubmit="handleOptimize(event)">
+                    <!-- Quick Preset Locations -->
+                    <div class="presets-row">
+                        <span class="presets-label">Popular Hubs:</span>
+                        <button type="button" class="preset-tag" onclick="setPreset('indiranagar', 'mgroad')">Indiranagar ➔ MG Road</button>
+                        <button type="button" class="preset-tag" onclick="setPreset('koramangala', 'whitefield')">Koramangala ➔ Whitefield</button>
+                        <button type="button" class="preset-tag" onclick="setPreset('majestic', 'jayanagar')">Majestic ➔ Jayanagar</button>
+                    </div>
+
+                    <!-- Origin Input -->
+                    <div class="form-group">
+                        <label for="origAddress">Origin (Pickup Location)</label>
+                        <div class="input-with-coords">
+                            <input type="text" id="origAddress" placeholder="e.g. 100ft Road, Indiranagar" required>
+                            <div class="coord-inputs">
+                                <input type="number" step="0.0001" id="origLat" placeholder="Lat" value="12.9784" required>
+                                <input type="number" step="0.0001" id="origLng" placeholder="Lng" value="77.6385" required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Destination Input -->
+                    <div class="form-group">
+                        <label for="destAddress">Destination</label>
+                        <div class="input-with-coords">
+                            <input type="text" id="destAddress" placeholder="e.g. Brigade Road, MG Road" required>
+                            <div class="coord-inputs">
+                                <input type="number" step="0.0001" id="destLat" placeholder="Lat" value="12.9756" required>
+                                <input type="number" step="0.0001" id="destLng" placeholder="Lng" value="77.6066" required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Optimization Objective -->
+                    <div class="form-group">
+                        <label>Optimization Objective</label>
+                        <div class="preference-toggle">
+                            <label class="pref-radio">
+                                <input type="radio" name="preference" value="balanced" checked>
+                                <span class="pref-btn">⚖️ Balanced</span>
+                            </label>
+                            <label class="pref-radio">
+                                <input type="radio" name="preference" value="cheapest">
+                                <span class="pref-btn">💰 Cheapest</span>
+                            </label>
+                            <label class="pref-radio">
+                                <input type="radio" name="preference" value="fastest">
+                                <span class="pref-btn">⚡ Fastest</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Multimodal toggles -->
+                    <div class="filter-row">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="includeMetro" checked> Include Namma Metro Multimodal
+                        </label>
+                        <div class="walk-limit">
+                            <span>Max Walk:</span>
+                            <select id="maxWalk">
+                                <option value="800">800 m</option>
+                                <option value="1500" selected>1.5 km</option>
+                                <option value="2500">2.5 km</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="action-buttons">
+                        <button type="submit" class="btn btn-primary btn-block" id="searchBtn">
+                            Find Optimal Journey
+                        </button>
+                        <button type="button" class="btn btn-secondary btn-block" onclick="handleDirectCompare()">
+                            Compare Ride Fares Only
+                        </button>
+                    </div>
+                </form>
+
+                <!-- Data Provenance Disclaimer -->
+                <div class="provenance-banner">
+                    <span class="icon">ℹ️</span>
+                    <span>All live prices are simulated demo estimates. RouteWise never invents booking confirmations or real-time driver availability.</span>
+                </div>
+            </div>
+
+            <!-- Right Panel: Results & Recommendation Display -->
+            <div class="results-card" id="resultsCard">
+                <div class="empty-state" id="emptyState">
+                    <div class="empty-icon">🗺️</div>
+                    <h3>Enter your journey points to see routes</h3>
+                    <p>We'll evaluate direct ride options and smart multimodal combinations using metro, auto, and walking.</p>
+                </div>
+
+                <div class="loading-state hidden" id="loadingState">
+                    <div class="spinner"></div>
+                    <p>Evaluating routes across Uber, Ola, Rapido, Namma Yatri & Namma Metro...</p>
+                </div>
+
+                <div class="results-content hidden" id="resultsContent">
+                    <!-- Recommended Card -->
+                    <div class="recommended-hero" id="recommendedHero">
+                        <!-- Populated by JS -->
+                    </div>
+
+                    <!-- Alternatives List -->
+                    <div class="alternatives-section">
+                        <div class="section-header">
+                            <h3>Alternative Options</h3>
+                            <span class="badge" id="altCount">0 options</span>
+                        </div>
+                        <div class="options-list" id="optionsList">
+                            <!-- Populated by JS -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Metro Explorer Section -->
+        <section id="metro-explorer" class="section-card">
+            <div class="section-header">
+                <div>
+                    <h2>🚇 Namma Metro Station Explorer</h2>
+                    <p>Geospatial station discovery across the Purple and Green Lines</p>
+                </div>
+                <div class="metro-controls">
+                    <button class="btn btn-sm btn-outline" onclick="loadNearbyToOrigin()">Find Stations Near Origin</button>
+                    <button class="btn btn-sm btn-outline" onclick="loadAllStations('purple')">Purple Line</button>
+                    <button class="btn btn-sm btn-outline" onclick="loadAllStations('green')">Green Line</button>
+                    <button class="btn btn-sm btn-secondary" onclick="loadAllStations('')">All Stations</button>
+                </div>
+            </div>
+            <div class="stations-grid" id="stationsGrid">
+                <!-- Populated by JS -->
+            </div>
+        </section>
+
+        <!-- Fare Analytics & Predictions -->
+        <section id="analytics-section" class="section-card">
+            <div class="section-header">
+                <div>
+                    <h2>📊 Fare Analytics & Baseline Price Prediction</h2>
+                    <p>Transparent statistical modeling using historical observations across providers</p>
+                </div>
+                <button class="btn btn-sm btn-primary" onclick="runPricePrediction()">Run Prediction on Current Route</button>
+            </div>
+            <div class="analytics-grid">
+                <div class="analytics-card" id="historyCard">
+                    <h3>Observed Fare History (30 Days)</h3>
+                    <div id="historyStats">Click "Run Prediction" or select a route above to load historical metrics.</div>
+                </div>
+                <div class="analytics-card" id="predictionCard">
+                    <h3>Predictive Model Output</h3>
+                    <div id="predictionStats">Transparent moving-average forecast will appear here.</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Personal Commute Savings & Alerts -->
+        <section id="savings-section" class="section-card">
+            <div class="section-header">
+                <div>
+                    <h2>💡 Commute Savings & Fare Drop Alerts</h2>
+                    <p>Track actual trip spending against cheapest alternatives and manage automated notifications</p>
+                </div>
+                <div class="auth-conditional">
+                    <button class="btn btn-sm btn-primary" onclick="openAlertModal()">+ Create Fare Alert</button>
+                    <button class="btn btn-sm btn-secondary" onclick="openLogTripModal()">+ Log Completed Trip</button>
+                </div>
+            </div>
+            <div class="savings-grid">
+                <div class="savings-card" id="savingsSummaryCard">
+                    <h3>Your Commute Savings Summary</h3>
+                    <div id="savingsData" class="savings-body">
+                        <p class="muted-text">Sign in to view your personalized spending dashboard and potential savings.</p>
+                    </div>
+                </div>
+                <div class="savings-card" id="alertsListCard">
+                    <h3>Your Active Fare Alerts</h3>
+                    <div id="alertsData" class="alerts-body">
+                        <p class="muted-text">Sign in to view and configure automated route alerts.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Auth Modal -->
+    <div class="modal hidden" id="authModal">
+        <div class="modal-backdrop" onclick="closeAuthModal()"></div>
+        <div class="modal-dialog">
+            <div class="modal-header">
+                <h3 id="authModalTitle">Sign In to RouteWise</h3>
+                <button class="close-btn" onclick="closeAuthModal()">&times;</button>
+            </div>
+            <form id="authForm" onsubmit="handleAuthSubmit(event)">
+                <div class="form-group" id="fullNameGroup">
+                    <label for="authFullName">Full Name</label>
+                    <input type="text" id="authFullName" placeholder="e.g. Ramesh Kumar">
+                </div>
+                <div class="form-group">
+                    <label for="authEmail">Email Address</label>
+                    <input type="email" id="authEmail" placeholder="ramesh@example.com" required>
+                </div>
+                <div class="form-group">
+                    <label for="authPassword">Password</label>
+                    <input type="password" id="authPassword" placeholder="Min 8 characters (letters & numbers)" required>
+                </div>
+                <div class="form-error hidden" id="authError"></div>
+                <button type="submit" class="btn btn-primary btn-block" id="authSubmitBtn">Submit</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Create Alert Modal -->
+    <div class="modal hidden" id="alertModal">
+        <div class="modal-backdrop" onclick="closeAlertModal()"></div>
+        <div class="modal-dialog">
+            <div class="modal-header">
+                <h3>Create Fare Drop Alert</h3>
+                <button class="close-btn" onclick="closeAlertModal()">&times;</button>
+            </div>
+            <form id="alertForm" onsubmit="handleCreateAlert(event)">
+                <div class="form-group">
+                    <label>Route</label>
+                    <input type="text" id="alertRouteLabel" readonly>
+                </div>
+                <div class="form-group">
+                    <label for="alertTargetFare">Target Fare (₹)</label>
+                    <input type="number" id="alertTargetFare" min="10" placeholder="e.g. 70" required>
+                </div>
+                <div class="form-group">
+                    <label for="alertProvider">Provider Preference</label>
+                    <select id="alertProvider">
+                        <option value="">Any Provider</option>
+                        <option value="uber">Uber</option>
+                        <option value="ola">Ola</option>
+                        <option value="rapido">Rapido</option>
+                        <option value="namma_yatri">Namma Yatri</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-primary btn-block">Save Alert</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Log Trip Modal -->
+    <div class="modal hidden" id="tripModal">
+        <div class="modal-backdrop" onclick="closeTripModal()"></div>
+        <div class="modal-dialog">
+            <div class="modal-header">
+                <h3>Log Completed Trip</h3>
+                <button class="close-btn" onclick="closeTripModal()">&times;</button>
+            </div>
+            <form id="tripForm" onsubmit="handleLogTrip(event)">
+                <div class="form-group">
+                    <label for="tripMode">Travel Mode</label>
+                    <select id="tripMode" required>
+                        <option value="cab">Cab (Uber / Ola)</option>
+                        <option value="auto">Auto (Namma Yatri / Rapido / Ola)</option>
+                        <option value="metro">Metro (BMRCL)</option>
+                        <option value="bike">Bike (Rapido)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="tripCost">Actual Fare Paid (₹)</label>
+                    <input type="number" id="tripCost" step="0.5" min="1" placeholder="e.g. 140" required>
+                </div>
+                <div class="form-group">
+                    <label for="tripDate">Trip Date</label>
+                    <input type="date" id="tripDate" required>
+                </div>
+                <button type="submit" class="btn btn-primary btn-block">Log Trip</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-container">
+            <p><strong>RouteWise</strong> — Production-Oriented Smart Mobility Platform for Bengaluru.</p>
+            <p class="footer-disclaimer">Zero fabricated live pricing or booking confirmations. Open-source architecture supporting PostGIS, Redis caching, and async FastAPI.</p>
+        </div>
+    </footer>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
+
